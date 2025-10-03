@@ -10,6 +10,7 @@ class Admin {
     struct Item {
         string name;
         int id;
+        int avl_q;
         double price;
     };
     vector<Item> inventory;
@@ -21,7 +22,7 @@ class Admin {
             cerr<<"\033[1;36mError opening file\033[0m"<<endl;
             return;
         }
-        file<<left<<setw(10)<<it.id<<setw(10)<<it.name<<setw(10)<<it.price<<endl;
+        file<<left<<setw(10)<<it.id<<setw(10)<<it.name<<setw(10)<<it.price<<setw(10)<<it.avl_q<<endl;
         file.close();
     }
     void load_from_file()
@@ -34,18 +35,22 @@ class Admin {
            return;
         }
         Item temp;
-        while(file>>temp.id>>temp.name>>temp.price)
+        while(file>>temp.id>>temp.name>>temp.price>>temp.avl_q)
         {
             inventory.push_back(temp);
         }
         file.close();
         cout<<"\033[1;36mEXISTING MENU CARD\033[0m"<<endl;
-        cout<<left<<setw(26)<<"\033[1;33mitem id\033[0m"<<setw(26)<<"\033[1;33mitem name\033[0m"<<setw(26)<<"\033[1;33mitem price\033[0m"<<endl;
+        cout<<left<<setw(26)<<"\033[1;33mitem id\033[0m"
+                  <<setw(26)<<"\033[1;33mitem name\033[0m"
+                  <<setw(26)<<"\033[1;33mitem price\033[0m"
+                  <<setw(26)<<"\033[1;33mitem available quantity\033[0m"<<endl;
         for(int i=0;i<inventory.size();i++)
         {
             cout<<left<<setw(15)<<inventory[i].id
                       <<setw(15)<<inventory[i].name
                       <<setw(15)<<inventory[i].price
+                      <<setw(15)<<inventory[i].avl_q
                       <<endl;
         }
 
@@ -55,6 +60,39 @@ public:
     void load()
     {
         load_from_file();
+    }
+    int update_quantity(string name,int qty)
+    {
+        int found=0;
+        for(int i=0;i<inventory.size();i++)
+        {
+            if(inventory[i].name==name)
+            {
+                inventory[i].avl_q-=qty;
+                found=1;
+                return  inventory[i].avl_q;
+                break;
+            }
+        }
+        fstream file("menu.txt",ios::out|ios::trunc);
+        file.close();
+        for(int i=0;i<inventory.size();i++)
+        {
+            Item temp;
+            temp=inventory[i];
+            add_to_files(temp);
+        }
+        if(found==0){
+            cout << "\033[1;36mInvalid Order Name \033[0m"<<endl;
+            return -1;
+        }
+        return 0;
+    }
+
+    int get_available(string name) {
+        for (auto &i : inventory)
+            if (i.name == name) return i.avl_q;
+        return 0;
     }
 
     void add_item() {
@@ -70,6 +108,9 @@ public:
 
             cout << "\033[1;36mEnter price of item: \033[0m";
             cin >> new_item.price;
+
+            cout << "\033[1;36mEnter quantity of item available: \033[0m";
+            cin >> new_item.avl_q;
             cin.ignore();
 
             inventory.push_back(new_item);
@@ -107,7 +148,7 @@ public:
             getline(cin, confirm);
             if (confirm == "yes" || confirm == "YES") {
                 inventory.erase(inventory.begin() + r);
-                cout << "\033[1;31mItem deleted.\033[0m\n";
+                cout << "\033[1;32mItem deleted.\033[0m\n";
             } else cout << "\033[1;33mDeletion cancelled.\033[0m\n";
         } else cout << "\033[1;31mItem not found.\033[0m\n";
         for(int i=0;i<inventory.size();i++)
@@ -134,6 +175,7 @@ public:
         cout << left << setw(10) << "1" << "Update id\n";
         cout << left << setw(10) << "2" << "Update name\n";
         cout << left << setw(10) << "3" << "Update price\n";
+        cout << left << setw(10) << "4" << "Update quantity available\n";
 
         int choice;
         cout << "Enter choice: ";
@@ -164,6 +206,15 @@ public:
                 inventory[res].price = price;
                 break;
             }
+            case 4:
+                {
+                    int a;
+                    cout<<"Enter new available quantity: ";
+                    cin>>a;
+                    cin.ignore();
+                    inventory[res].avl_q = a;
+                    break;
+                }
             default: cout << "\033[1;31mInvalid choice.\033[0m\n";
         }
          for(int i=0;i<inventory.size();i++)
@@ -194,7 +245,8 @@ public:
 
 class show : public billing_system {
 public:
-    void bill(vector<billing_system> &order, Admin &ad) {
+    void bill(vector<billing_system> &order, Admin &ad)
+     {
         fstream file("bill.txt", ios::app);
         double grandTotal = 0;
 
@@ -210,17 +262,25 @@ public:
             string it = o.getitem();
             int q = o.getqty();
             double price = ad.getprice(it);
-            double total = price * q;
-            grandTotal += total;
-            if(price==0)
+            int avl = ad.get_available(it);
+            if(price==0) {
                 cout<<"item not there"<<endl;
-            else
-            {
-              cout << "---------------------------------------\n";
-            cout << left << setw(15) << it << setw(10) << q
-                 << setw(10) << price << setw(10) << total << endl;
-            file << left << setw(15) << it << setw(10) << q
-                 << setw(10) << price << setw(10) << total << endl;
+            }
+            else if(avl < q) {
+                cout << "\033[1;36mItem availability is short \033[0m"<<endl;
+            }
+            else {
+                ad.update_quantity(it,q);
+                double total = price * q;
+                grandTotal += total;
+
+                cout << left << setw(15) << it << setw(10) << q
+                     << setw(10) << price << setw(10) << total << endl;
+                file << left << setw(15) << it << setw(10) << q
+                     << setw(10) << price << setw(10) << total << endl;
+            }
+        }
+
         auto now = chrono::system_clock::now();
         time_t ct = chrono::system_clock::to_time_t(now);
 
@@ -235,11 +295,8 @@ public:
         file << left << setw(35) << "Time: " << put_time(localtime(&ct), "%H:%M:%S") << endl;
         file << left << setw(35) << "Date: " << put_time(localtime(&ct), "%y-%m-%d") << endl;
         file << "---------------------------------------\n";
-
         file.close();
-            }
-        }
-    }
+     }
 };
 
 int main() {
@@ -279,16 +336,19 @@ int main() {
             }
             end_admin:;
         } else if (user == "cashier") {
-            int n, q;
+            vector<billing_system> order;
             string name;
-            cout << "\033[1;36mEnter number of items: \033[0m";
-            cin >> n;
-            cin.ignore();
-            vector<billing_system> order(n);
-            cout << "\033[1;36mEnter your order (item quantity):\033[0m\n";
-            for (int i = 0; i < n; i++) {
-                cin >> name >> q;
-                order[i].item_details(name, q);
+            int q;
+            cout << "\033[1;36mEnter your order (type 'done' to finish):\033[0m\n";
+            while(true) {
+                cout<<"Item name: ";
+                cin >> name;
+                if(name=="done") break;
+                cout<<"Quantity: ";
+                cin >> q;
+                billing_system o;
+                o.item_details(name,q);
+                order.push_back(o);
             }
             show s;
             s.bill(order, ad);
