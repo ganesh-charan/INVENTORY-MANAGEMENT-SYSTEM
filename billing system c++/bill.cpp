@@ -302,15 +302,21 @@ public:
 int main() {
     Admin ad;
 
-    while (true) {
+    while (true)
+    {
             ad.load();
-        string user;
-        cout << "\033[1;36mEnter username (admin/cashier) or 'exit' to quit: \033[0m";
-        cin >> user;
-        cin.ignore();
-        if (user == "exit") break;
+       int c;
+        cout << "\033[1;36mSELECT THE USER (admin/cashier) or 'exit' to quit: \033[0m"<<endl;
+        cout << "\033[1;36m1.ADMIN \033[0m"<<endl;
+        cout << "\033[1;36m2.CASHIER \033[0m"<<endl;
+        cout << "\033[1;36m3.EXIT \033[0m\n"<<endl;
+        cout << "\033[1;36mSELECT THE USER : \033[0m";
+        cin>>c;
+    switch(c)
+    {
+        case 1:
+        {
 
-        if (user == "admin") {
                 cout << "\n\033[1;34mAdmin Menu:\033[0m\n";
                 cout << left << setw(10) << "1." << "Add items to list\n";
                 cout << left << setw(10) << "2." << "Update items of list\n";
@@ -335,12 +341,17 @@ int main() {
                 }
             }
             end_admin:;
-        } else if (user == "cashier") {
+            break;
+
+        }
+        case 2:
+        {
             vector<billing_system> order;
             string name;
             int q;
             cout << "\033[1;36mEnter your order (type 'done' to finish):\033[0m\n";
-            while(true) {
+            while(true)
+                {
                 cout<<"Item name: ";
                 cin >> name;
                 if(name=="done") break;
@@ -349,14 +360,24 @@ int main() {
                 billing_system o;
                 o.item_details(name,q);
                 order.push_back(o);
-            }
-            show s;
-            s.bill(order, ad);
-        } else {
-            cout << "\033[1;31mInvalid user!\033[0m\n";
+               }
+               show s;
+               s.bill(order, ad);
+               break;
         }
+        case 3:
+            {
+                return false;
+                break;
+            }
+        default:
+        {
+           cout << "\033[1;31mInvalid user!\033[0m\n";
+           return false;
+           break;
+        }
+    }
     }
 
     return 0;
-)
-
+}
